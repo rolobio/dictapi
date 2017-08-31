@@ -19,10 +19,10 @@ class APITable(object):
             # Overwrite an entry
             entry = self.table.get_one(**wheres)
             if not entry:
-                # Attempting to overwrite non-existant entry, raise an error
-                return error('No entry matching: {}'.format(str(wheres)))
-            entry.update(kw)
-            entry.flush()
+                entry = self.table(**kw).flush()
+            else:
+                entry.update(kw)
+                entry.flush()
         else:
             # Insert a new entry
             entry = self.table(**kw).flush()

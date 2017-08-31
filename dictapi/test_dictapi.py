@@ -1,6 +1,5 @@
 from dictapi.dictapi import API
 from functools import partial
-import cherrypy
 import os
 import psycopg2
 import requests
@@ -85,6 +84,9 @@ class TestAPI(BaseTest):
     def test_put(self):
         john = self.api.person.PUT(name='John')
         self.assertDictContains(john, {'name':'John', 'id':1})
+
+        two = self.api.person.PUT(id=2)
+        self.assertDictContains(two, {'id':2})
 
 
 

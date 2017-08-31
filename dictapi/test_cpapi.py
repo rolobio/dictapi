@@ -26,18 +26,17 @@ class BaseCherryPy(BaseTest):
         cherrypy.config.update({'log.screen':True})
 
 
-
-    def request(self, method, path, data={}):
+    def __request(self, method, path, data={}):
         func = getattr(requests, method)
         r = func('http://127.0.0.1:8080/api'+path, data=data)
         return r.json()
 
 
-    def get(self, *a, **kw):    return self.request('get', *a, **kw)
-    def put(self, *a, **kw):    return self.request('put', *a, **kw)
-    def post(self, *a, **kw):   return self.request('post', *a, **kw)
-    def delete(self, *a, **kw): return self.request('delete', *a, **kw)
-    def head(self, *a, **kw):   return self.request('head', *a, **kw)
+    def get(self, *a, **kw):    return self.__request('get', *a, **kw)
+    def put(self, *a, **kw):    return self.__request('put', *a, **kw)
+    def post(self, *a, **kw):   return self.__request('post', *a, **kw)
+    def delete(self, *a, **kw): return self.__request('delete', *a, **kw)
+    def head(self, *a, **kw):   return self.__request('head', *a, **kw)
 
 
 
@@ -73,15 +72,6 @@ class TestAPICherryPy(BaseCherryPy):
         phil = self.put('/person', data=jake)
 
         self.assertDictContains(phil, {'id':1, 'name':'Phil'})
-
-
-    def test_put_not_existing(self):
-        """
-        An error is returned when PUTing over a non-existant entry
-        """
-        # Jake does not exist, error is raised
-        error = self.put('/person', data={'id':1, 'name':'Jake'})
-        self.assertIn('error', error)
 
 
     def test_get_non_existant(self):
