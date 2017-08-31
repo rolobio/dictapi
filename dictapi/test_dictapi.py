@@ -1,5 +1,4 @@
-from dictapi import API
-from dictapi.cpapi import APITable
+from dictapi.dictapi import API
 from functools import partial
 import cherrypy
 import os
@@ -31,35 +30,46 @@ CREATE TABLE person (
     id SERIAL PRIMARY KEY,
     name TEXT,
     manager_id INTEGER REFERENCES person(id)
-)
+);
+CREATE TABLE department (
+    id SERIAL PRIMARY KEY,
+    name TEXT
+);
+CREATE TABLE person_department (
+    person_id INTEGER REFERENCES person(id),
+    department_id INTEGER REFERENCES department(id),
+    PRIMARY KEY (person_id, department_id)
+);
+'''
+
+DB_RESET = '''
+DELETE FROM person_department;
+DELETE FROM person;
+DELETE FROM department;
+ALTER SEQUENCE person_id_seq RESTART WITH 1;
+ALTER SEQUENCE department_id_seq RESTART WITH 1;
 '''
 
 class BaseTest(unittest.TestCase):
 
     def setUp(self):
         self.conn = psycopg2.connect(**test_db_login)
-        curs = self.conn.cursor()
-        for _ in range(2):
-            try:
-                curs.execute(DB_SCHEMA)
-                break
-            except:
-                self.drop_schema()
+        self.curs = self.conn.cursor()
+        try:
+            self.curs.execute(DB_SCHEMA)
+        except psycopg2.IntegrityError:
+            # Tables already exist, reset them
+            self.db_reset()
+        except psycopg2.ProgrammingError:
+            # Tables already exist, reset them
+            self.db_reset()
         self.conn.commit()
+        self.api = API(self.conn)
 
 
-    def tearDown(self):
-        self.drop_schema()
-        self.conn.commit()
-
-
-    def drop_schema(self):
+    def db_reset(self):
         self.conn.rollback()
-        curs = self.conn.cursor()
-        curs.execute('''DROP SCHEMA public CASCADE;
-                CREATE SCHEMA public;
-                GRANT ALL ON SCHEMA public TO postgres;
-                GRANT ALL ON SCHEMA public TO public;''')
+        self.curs.execute(DB_RESET)
 
 
     def assertDictContains(cls, a, b):
@@ -69,89 +79,12 @@ class BaseTest(unittest.TestCase):
 
 
 
-class BaseCherryPy(BaseTest):
 
-    def setUp(self):
-        super().setUp()
-
-        self.api = API(self.conn)
-        self.api.table_factory = lambda: APITable
-        self.api.init_tables()
-
-        cherrypy.config.update({
-            'log.screen':False,
-            'log.access_file':'',
-            'log.error_file':''
-            })
-        self.app = cherrypy.tree.mount(self.api, '/', config={
-            '/person':{'request.dispatch': cherrypy.dispatch.MethodDispatcher()}
-            })
-        cherrypy.engine.start()
-        cherrypy.config.update({'log.screen':True})
-
-
-
-    def request(self, method, path, data={}):
-        func = getattr(requests, method)
-        r = func('http://127.0.0.1:8080'+path, data=data)
-        return r.json()
-
-
-    def get(self, *a, **kw):    return self.request('get', *a, **kw)
-    def put(self, *a, **kw):    return self.request('put', *a, **kw)
-    def post(self, *a, **kw):   return self.request('post', *a, **kw)
-    def delete(self, *a, **kw): return self.request('delete', *a, **kw)
-    def head(self, *a, **kw):   return self.request('head', *a, **kw)
-
-
-
-class TestAPICherryPy(BaseCherryPy):
-
-
-    def test_simple(self):
-        """
-        Test the simple functionality of a RESTFul API
-        """
-        # Insert Jake
-        jake1 = self.put('/person', data={'name':'Jake'})
-        self.assertDictContains(jake1, {'id':1, 'name':'Jake'})
-
-        # Get the same Jake
-        jake2 = self.get('/person/1')
-        self.assertEqual(jake1, jake2)
-
-        # Get the same Jake using his name
-        jake3 = self.get('/person', data={'name':'Jake'})
-        self.assertEqual(jake1, jake2, jake3)
-
+class TestAPI(BaseTest):
 
     def test_put(self):
-        """
-        An entry should be overwritten when using PUT
-        """
-        jake = self.put('/person', data={'name':'Jake'})
+        john = self.api.person.PUT(name='John')
+        self.assertDictContains(john, {'name':'John', 'id':1})
 
-        # Name change
-        jake['name'] = 'Phil'
-        phil = self.put('/person', data=jake)
-
-        self.assertDictContains(phil, {'id':1, 'name':'Phil'})
-
-
-    def test_put_not_existing(self):
-        """
-        An error is returned when PUTing over a non-existant entry
-        """
-        # Jake does not exist, error is raised
-        error = self.put('/person', data={'id':1, 'name':'Jake'})
-        self.assertIn('error', error)
-
-
-    def test_get_non_existant(self):
-        """
-        GETing an entry that doesn't exist raises an error
-        """
-        error = self.get('/person', data={'id':1})
-        self.assertIn('error', error)
 
 

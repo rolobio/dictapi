@@ -31,12 +31,15 @@ class APITable(object):
 
 
     def GET(self, *a, **kw):
-        if len(a) == 1:
-            entry = self.table.get_one(id=int(a[0]))
-        else:
+        entry = None
+        if not kw and len(a) == len(self.table.pks):
+            # Convert positional arguments to keyword arguments if there are the
+            # same amount of primary keys
+            kw = dict(zip(self.table.pks, a))
+        if kw:
             entry = self.table.get_one(**kw)
-            if not entry:
-                return error('No entry matching: {}'.format(str(kw)))
+        if not entry:
+            return error('No entry matching: {}'.format(str(kw)))
         self.api.db_conn.rollback()
         return dict(entry)
 
