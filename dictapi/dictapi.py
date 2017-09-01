@@ -5,6 +5,7 @@ def error(msg):
 
 OK = 200
 CREATED = 201
+BAD_REQUEST = 400
 NOT_FOUND = 404
 
 
@@ -49,17 +50,18 @@ class APITable(object):
     def PUT(self, **kw):
         wheres = {pk:kw[pk] for pk in self.table.pks if pk in kw}
         code = CREATED
+        entry = None
         if wheres:
+            # The primary key(s) were specified for the put, overwrite the entry
             entry = self.table.get_one(**wheres)
-            if not entry:
-                # Create a new entry
-                entry = self.table(**kw).flush()
-            else:
+            if entry:
                 # Overwrite an entry
                 entry.update(kw)
                 entry.flush()
                 code = OK
-        else:
+        # No entry was updated, so create a new one with the primary key(s) if
+        # they were provided
+        if not entry:
             # Insert a new entry
             entry = self.table(**kw).flush()
         self.api.db_conn.commit()
@@ -69,7 +71,7 @@ class APITable(object):
     def DELETE(self, *a):
         a = list(a)
         if len(a) > len(self.table.pks):
-            return (NOT_FOUND, error('No entry found'))
+            return (BAD_REQUEST, error('No entry found'))
         wheres = {pk:a.pop(0) for pk in self.table.pks}
         entry = self.table.get_one(**wheres)
         if entry:

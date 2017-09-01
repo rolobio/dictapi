@@ -9,12 +9,9 @@ def json_out(func):
     @wraps(func)
     def wrapper(*a, **kw):
         cherrypy.response.headers['Content-Type'] = 'application/json'
-        try:
-            code, entry = func(*a, **kw)
-            cherrypy.response.status = code
-            out = json.dumps(entry).encode()
-        except Exception as e:
-            raise
+        code, entry = func(*a, **kw)
+        cherrypy.response.status = code
+        out = json.dumps(entry).encode()
         return out
     return wrapper
 
