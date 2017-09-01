@@ -45,6 +45,8 @@ class CPJsonMixin:
 
 class APITable(OrigAPITable, CPJsonMixin):
 
+    exposed = True
+
     def __init__(self, api, table):
         super(OrigAPITable, self).__init__()
         self.api = api

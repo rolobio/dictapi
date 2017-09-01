@@ -11,8 +11,6 @@ NOT_FOUND = 404
 
 class APITable(object):
 
-    exposed = True
-
     def __init__(self, api, table):
         self.api = api
         self.table = table
