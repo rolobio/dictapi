@@ -10,7 +10,9 @@ def json_out(func):
     def wrapper(*a, **kw):
         cherrypy.response.headers['Content-Type'] = 'application/json'
         try:
-            out = json.dumps(func(*a, **kw)).encode()
+            code, entry = func(*a, **kw)
+            cherrypy.response.status = code
+            out = json.dumps(entry).encode()
         except Exception as e:
             raise
         return out
@@ -32,6 +34,10 @@ HTTP_METHODS = (
 class CPJsonMixin:
 
     def wrap(self):
+        """
+        Wrap all HTTP methods with json_out so that the methods return json
+        parseable content
+        """
         my_methods = [i for i in dir(self) if i in HTTP_METHODS]
         for attr in my_methods:
             if callable(getattr(self, attr)):

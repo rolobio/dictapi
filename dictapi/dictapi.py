@@ -17,26 +17,6 @@ class APITable(object):
         self.table = table
 
 
-    def PUT(self, **kw):
-        wheres = {pk:kw[pk] for pk in self.table.pks if pk in kw}
-        code = CREATED
-        if wheres:
-            entry = self.table.get_one(**wheres)
-            if not entry:
-                # Create a new entry
-                entry = self.table(**kw).flush()
-            else:
-                # Overwrite an entry
-                entry.update(kw)
-                entry.flush()
-                code = OK
-        else:
-            # Insert a new entry
-            entry = self.table(**kw).flush()
-        self.api.db_conn.commit()
-        return (code, dict(entry))
-
-
     def GET(self, *a, **kw):
         entry = None
         if not kw and len(a) == len(self.table.pks):
@@ -64,6 +44,26 @@ class APITable(object):
             return (NOT_FOUND, error('No entry matching: {}'.format(str(kw))))
         self.api.db_conn.rollback()
         return (OK, dict(entry))
+
+
+    def PUT(self, **kw):
+        wheres = {pk:kw[pk] for pk in self.table.pks if pk in kw}
+        code = CREATED
+        if wheres:
+            entry = self.table.get_one(**wheres)
+            if not entry:
+                # Create a new entry
+                entry = self.table(**kw).flush()
+            else:
+                # Overwrite an entry
+                entry.update(kw)
+                entry.flush()
+                code = OK
+        else:
+            # Insert a new entry
+            entry = self.table(**kw).flush()
+        self.api.db_conn.commit()
+        return (code, dict(entry))
 
 
     def DELETE(self, *a):
