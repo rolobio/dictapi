@@ -36,6 +36,21 @@ class APITable(object):
             # Convert positional arguments to keyword arguments if there are the
             # same amount of primary keys
             kw = dict(zip(self.table.pks, a))
+        elif not kw and len(a) > len(self.table.pks):
+            a = list(a)
+            # Requesting a reference/substratum, get the primary keys for this
+            # table
+            wheres = {pk:a.pop(0) for pk in self.table.pks}
+            # The object that contains references
+            referenced = self.table.get_one(**wheres)
+            # Keep moving down the object until the last reference is gotten
+            while a:
+                try:
+                    referenced = referenced[a.pop(0)]
+                except KeyError:
+                    # Bad reference was passed
+                    return error('No reference found')
+            return dict(referenced)
         if kw:
             entry = self.table.get_one(**kw)
         if not entry:

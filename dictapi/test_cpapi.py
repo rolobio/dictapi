@@ -49,7 +49,6 @@ class TestAPICherryPy(BaseCherryPy):
         """
         # Insert Jake
         jake1 = self.put('/person', data={'name':'Jake'})
-        print(jake1)
         self.assertDictContains(jake1, {'id':1, 'name':'Jake'})
 
         # Get the same Jake
@@ -90,7 +89,27 @@ class TestAPICherryPy(BaseCherryPy):
         """
         The person table references the department table using a join table.
         """
+        # Setup the references for each table
+        Person, Department = self.api.person.table, self.api.department.table
+        PD = self.api.person_department.table
+        Person['person_department'] = Person['id'] == PD['person_id']
+        PD['department'] = PD['department_id'] == Department['id']
+        # Use a substratum so the person_department entry can be skipped
+        Person['department'] = Person['person_department'].substratum(
+                'department')
+
+        jake = self.put('/person', data={'name':'Jake'})
         sales = self.put('/department', data={'name':'Sales'})
-        self.assertDictContains(sales, {'id':1, 'name':'Sales'})
+        jake_dept = self.put('/person_department', data={
+            'person_id':jake['id'], 'department_id':sales['id']})
+        self.assertDictContains(jake_dept, {'person_id':1, 'department_id':1})
+
+        # Get Jake's department through jake entry
+        sales2 = self.get('/person/1/department')
+        self.assertEqual(sales, sales2)
+
+        # Same entry can be gotten directly, rather than through substratum
+        sales3 = self.get('/person/1/person_department/department')
+        self.assertEqual(sales, sales3)
 
 
