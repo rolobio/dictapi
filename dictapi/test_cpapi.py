@@ -65,12 +65,6 @@ class TestAPICherryPy(BaseCherryPy):
         jake2 = self.assertResponse(200, response,
                 {'id':1, 'name':'Jake'})
 
-        # Get the same Jake using his name
-        response = self.get('/person', data={'name':'Jake'})
-        jake3 = self.assertResponse(200, response,
-                {'id':1, 'name':'Jake'})
-        self.assertEqual(jake2, jake3)
-
 
     def test_put(self):
         """
