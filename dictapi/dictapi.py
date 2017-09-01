@@ -3,6 +3,10 @@ from dictorm import DictDB
 def error(msg):
     return {'error':True, 'message':str(msg)}
 
+OK = 200
+CREATED = 201
+NOT_FOUND = 404
+
 
 class APITable(object):
 
@@ -15,19 +19,22 @@ class APITable(object):
 
     def PUT(self, **kw):
         wheres = {pk:kw[pk] for pk in self.table.pks if pk in kw}
+        code = CREATED
         if wheres:
-            # Overwrite an entry
             entry = self.table.get_one(**wheres)
             if not entry:
+                # Create a new entry
                 entry = self.table(**kw).flush()
             else:
+                # Overwrite an entry
                 entry.update(kw)
                 entry.flush()
+                code = OK
         else:
             # Insert a new entry
             entry = self.table(**kw).flush()
         self.api.db_conn.commit()
-        return dict(entry)
+        return (code, dict(entry))
 
 
     def GET(self, *a, **kw):
@@ -49,14 +56,26 @@ class APITable(object):
                     referenced = referenced[a.pop(0)]
                 except KeyError:
                     # Bad reference was passed
-                    return error('No reference found')
-            return dict(referenced)
+                    return (NOT_FOUND, error('No reference found'))
+            return (OK, dict(referenced))
         if kw:
             entry = self.table.get_one(**kw)
         if not entry:
-            return error('No entry matching: {}'.format(str(kw)))
+            return (NOT_FOUND, error('No entry matching: {}'.format(str(kw))))
         self.api.db_conn.rollback()
-        return dict(entry)
+        return (OK, dict(entry))
+
+
+    def DELETE(self, *a):
+        a = list(a)
+        if len(a) > len(self.table.pks):
+            return (NOT_FOUND, error('No entry found'))
+        wheres = {pk:a.pop(0) for pk in self.table.pks}
+        entry = self.table.get_one(**wheres)
+        if entry:
+            # As of writing this code, entry.delete() will always return a None
+            return (OK, entry.delete())
+        return (NOT_FOUND, error('No entry found'))
 
 
 

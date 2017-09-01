@@ -75,11 +75,27 @@ class BaseTest(unittest.TestCase):
         self.curs.execute(DB_RESET)
 
 
+    @classmethod
     def assertDictContains(cls, a, b):
-        if not set(b.items()).issubset(set(a.items())):
-            raise TypeError('Dict is missing items {}'.format(
-                str(dict(set(b.items()).difference(set(a.items()))))))
+        missing = dict(set(b.items()).difference(set(a.items())))
+        if missing:
+            raise TypeError('Dict is missing items {}'.format(str(missing)))
 
+
+    def assertError(self, expected_code, response):
+        code, entry = response
+        self.assertEqual(code, expected_code)
+        self.assertIn('error', entry)
+
+
+    def assertResponse(self, expected_code, response, expected_entry):
+        code, entry = response
+        self.assertEqual(code, expected_code)
+        if expected_entry != None:
+            self.assertDictContains(entry, expected_entry)
+        else:
+            # Response is expected to be None
+            self.assertEqual(entry, None)
 
 
 
@@ -87,18 +103,21 @@ class TestAPI(BaseTest):
 
     def test_put(self):
         # A new person can be PUT
-        jake = self.api.person.PUT(name='Jake')
-        self.assertDictContains(jake, {'name':'Jake', 'id':1})
+        response = self.api.person.PUT(name='Jake')
+        self.assertResponse(201, response,
+                {'name':'Jake', 'id':1})
 
         # Another person with no name can be PUT
-        two = self.api.person.PUT(id=2)
-        self.assertDictContains(two, {'id':2})
+        response = self.api.person.PUT(id=2)
+        self.assertResponse(201, response,
+                {'id':2})
 
         # You can overwrite an entry using its primary keys
-        two['name'] = 'Phil'
-        phil = self.api.person.PUT(**two)
+        _, jake = response
+        jake['name'] = 'Phil'
+        response = self.api.person.PUT(**jake)
 
-        self.assertDictContains(phil,
+        self.assertResponse(200, response,
                 {'id':2, 'name':'Phil'})
 
 
@@ -107,20 +126,20 @@ class TestAPI(BaseTest):
         jake1 = self.api.dictdb['person'](name='Jake').flush()
 
         # The inserted person can be gotten
-        jake2 = self.api.person.GET(name='Jake')
+        _, jake2 = self.api.person.GET(name='Jake')
         self.assertEqual(jake1, jake2)
 
 
     def test_reference(self):
-        jake = self.api.person.PUT(name='Jake')
-        sales = self.api.department.PUT(name='Sales')
-        jake_dept = self.api.person_department.PUT(
+        _, jake = self.api.person.PUT(name='Jake')
+        _, sales = self.api.department.PUT(name='Sales')
+        _, jake_dept = self.api.person_department.PUT(
                 person_id=jake['id'],
                 department_id=sales['id'])
 
         # Department has not yet been defined
         error = self.api.person.GET(1, 'department')
-        self.assertIn('error', error)
+        self.assertError(404, error)
 
         # department is referenced through person_department
         Person, Department = self.api.person.table, self.api.department.table
@@ -130,8 +149,23 @@ class TestAPI(BaseTest):
         Person['department'] = Person['person_department'].substratum(
                 'department')
 
-        sales2 = self.api.person.GET(1, 'department')
+        _, sales2 = self.api.person.GET(1, 'department')
         self.assertEqual(sales, sales2)
+
+
+    def test_delete(self):
+        # Deleting non-existant entry
+        error = self.api.person.DELETE(1)
+        self.assertError(404, error)
+
+        jake = self.api.person.PUT(name='Jake')
+        response = self.api.person.DELETE(1)
+        self.assertResponse(200, response,
+                None)
+
+        # Jake was already deleted
+        error = self.api.person.DELETE(1)
+        self.assertError(404, error)
 
 
 
