@@ -53,14 +53,12 @@ class BaseCherryPy(BaseTest):
 class TestAPICherryPy(BaseCherryPy):
 
 
-    def test_simple(self):
+    def test_get(self):
         """
         Test the simple functionality of a RESTFul API
         """
         # Insert Jake
-        response = self.put('/person', data={'name':'Jake'})
-        jake1 = self.assertResponse(201, response,
-                {'id':1, 'name':'Jake'})
+        jake1 = self.api.person.PUT(name='Jake')
 
         # Get the same Jake
         response = self.get('/person/1')
