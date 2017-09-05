@@ -200,6 +200,19 @@ class TestAPI(BaseTest):
         self.assertEqual(sales, sales2)
 
 
+    def test_reference_delete(self):
+        _, jake = self.api.person.PUT(name='Jake')
+        _, sales = self.api.department.PUT(name='Sales')
+        _, jake_dept = self.api.person_department.PUT(
+                person_id=jake['id'],
+                department_id=sales['id'])
+
+        # Can't delete sales
+        error = self.api.department.DELETE(1)
+        self.assertError(400, error)
+
+
+
     def test_delete(self):
         # Deleting non-existant entry
         error = self.api.person.DELETE(1)

@@ -28,9 +28,9 @@ class APITable(object):
             entries = list(self.table.get_where().limit(COLLECTION_SIZE
                 ).offset(offset))
             if not entries:
-                # No entries
                 self.api.db_conn.rollback()
                 return (NOT_FOUND, error('No entries found in collection'))
+
             self.api.db_conn.rollback()
             return (OK, entries)
         elif not kw and len(a) == len(self.table.pks):
@@ -108,7 +108,12 @@ class APITable(object):
         get_code, entry = self.GET(*a, **kw)
         if get_code == 200:
             # Entry exists, delete it
-            result = entry.delete()
+            try:
+                result = entry.delete()
+            except psycopg2.IntegrityError:
+                # Can't delete the entry
+                self.api.db_conn.rollback()
+                return (BAD_REQUEST, error('Cannot deleted referenced entry'))
             self.api.db_conn.commit()
             return (OK, result)
         else:
