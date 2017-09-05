@@ -40,13 +40,8 @@ class APITable(object):
                 current = a.pop(0)
                 if current not in referenced:
                     self.api.db_conn.rollback()
-                    return (BAD_REQUEST, error('No reference'))
-                try:
-                    referenced = referenced[current]
-                except KeyError:
-                    # Bad reference was passed
-                    self.api.db_conn.rollback()
-                    return (NOT_FOUND, error('No reference found'))
+                    return (BAD_REQUEST, error('No reference exists'))
+                referenced = referenced[current]
             self.api.db_conn.rollback()
             return (OK, referenced)
         if kw:
