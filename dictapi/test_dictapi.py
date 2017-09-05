@@ -134,6 +134,8 @@ class TestAPI(BaseTest):
         self.assertError(400, error)
         error = self.api.person.GET(id='foo')
         self.assertError(400, error)
+        error = self.api.person.DELETE(id='foo')
+        self.assertError(400, error)
 
 
     def test_get(self):
@@ -175,8 +177,7 @@ class TestAPI(BaseTest):
 
         jake = self.api.person.PUT(name='Jake')
         response = self.api.person.DELETE(1)
-        self.assertResponse(200, response,
-                None)
+        self.assertResponse(200, response, None)
 
         # Jake was already deleted
         error = self.api.person.DELETE(1)
@@ -190,6 +191,11 @@ class TestAPI(BaseTest):
         # Bad Request
         response = self.api.person.DELETE(1,2)
         self.assertError(400, response)
+
+        # Deletion by keyword
+        jake = self.api.person.PUT(name='Jake')
+        response = self.api.person.DELETE(id=2)
+        self.assertResponse(200, response, None)
 
 
 

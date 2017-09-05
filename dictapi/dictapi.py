@@ -80,13 +80,21 @@ class APITable(object):
         return (code, dict(entry))
 
 
-    def DELETE(self, *a):
+    def DELETE(self, *a, **kw):
         if len(a) > len(self.table.pks):
             self.api.db_conn.rollback()
             return (BAD_REQUEST, error('No entry found'))
-        a = list(a)
-        wheres = {pk:a.pop(0) for pk in self.table.pks}
-        entry = self.table.get_one(**wheres)
+        if a and not kw:
+            a = list(a)
+            wheres = {pk:a.pop(0) for pk in self.table.pks}
+        elif kw and not a:
+            wheres = kw
+        try:
+            entry = self.table.get_one(**wheres)
+        except psycopg2.DataError:
+            # Invalid values in wheres
+            self.api.db_conn.rollback()
+            return (BAD_REQUEST, error('Invalid primary keys'))
         if entry:
             # As of writing this code, entry.delete() will always return a None
             result = entry.delete()
