@@ -38,6 +38,7 @@ class APITable(object):
                     # Bad reference was passed
                     self.api.db_conn.rollback()
                     return (NOT_FOUND, error('No reference found'))
+            self.api.db_conn.rollback()
             return (OK, dict(referenced))
         if kw:
             entry = self.table.get_one(**kw)
