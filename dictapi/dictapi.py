@@ -20,7 +20,8 @@ class APITable(object):
         entry = None
         if not kw and len(a) == len(self.table.pks):
             # Convert positional arguments to keyword arguments if there are the
-            # same amount of primary keys
+            # same amount of primary keys.  It is assumed that the arguments are
+            # in the same order as the primary keys
             kw = dict(zip(self.table.pks, a))
         elif not kw and len(a) > len(self.table.pks):
             a = list(a)
@@ -67,9 +68,9 @@ class APITable(object):
 
 
     def DELETE(self, *a):
-        a = list(a)
         if len(a) > len(self.table.pks):
             return (BAD_REQUEST, error('No entry found'))
+        a = list(a)
         wheres = {pk:a.pop(0) for pk in self.table.pks}
         entry = self.table.get_one(**wheres)
         if entry:
