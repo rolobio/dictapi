@@ -55,25 +55,25 @@ class APITable(object):
 
 
     def PUT(self, **kw):
+        # Get the entry that matches the primary keys, otherwise the GET will
+        # attempt to find an entry that may not yet contain the values we're
+        # PUTing
         wheres = {pk:kw[pk] for pk in self.table.pks if pk in kw}
-        entry = None
-        code = CREATED
-
         get_code, entry = self.GET(**wheres)
         if 200 <= get_code <= 300:
             # Entry already exists, update it
             entry.update(kw)
             entry.flush()
-            code = OK
+            self.api.db_conn.commit()
+            return (OK, entry)
         elif get_code == 404:
             # No entry found, create it
             entry = self.table(**kw).flush()
+            self.api.db_conn.commit()
+            return (CREATED, entry)
         else:
             # Error occured
             return (get_code, entry)
-
-        self.api.db_conn.commit()
-        return (code, entry)
 
 
     def DELETE(self, *a, **kw):
