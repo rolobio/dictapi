@@ -1,5 +1,5 @@
-from dictapi.test_dictapi import BaseTest
 from dictapi.cpapi import API
+from dictapi.test_dictapi import BaseTest
 from functools import partial
 import cherrypy
 import os
@@ -23,7 +23,9 @@ class BaseCherryPy(BaseTest):
         self.app = cherrypy.tree.mount(self.api, '/api',
                 config=self.api.generate_config())
         cherrypy.engine.start()
-        cherrypy.config.update({'log.screen':True})
+
+        # uncomment for troubleshooting
+        #cherrypy.config.update({'log.screen':True})
 
 
     def __request(self, method, path, data=None, params=None):
