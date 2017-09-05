@@ -160,7 +160,7 @@ class TestAPI(BaseTest):
 
         # Department has not yet been defined
         error = self.api.person.GET(1, 'department')
-        self.assertError(404, error)
+        self.assertError(400, error)
 
         # department is referenced through person_department
         Person, Department = self.api.person.table, self.api.department.table

@@ -48,6 +48,11 @@ class BaseCherryPy(BaseTest):
         return entry
 
 
+    def assertError(self, expected_code, error):
+        self.assertEqual(expected_code, error.status_code)
+        self.assertIn('error', error.json())
+
+
 
 
 class TestAPICherryPy(BaseCherryPy):
@@ -88,13 +93,20 @@ class TestAPICherryPy(BaseCherryPy):
         GETing an entry that doesn't exist raises an error
         """
         error = self.get('/person', data={'id':1})
-        self.assertEqual(404, error.status_code)
-        self.assertIn('error', error.json())
+        self.assertError(404, error)
 
         # Incorrect primary keys also fails
         error = self.get('/person', data={'foo':1, 'bar':2})
         self.assertEqual(404, error.status_code)
-        self.assertIn('error', error.json())
+
+        # Getting Jake's 2 reference is invalid
+        self.put('/person', data={'name':'Jake'})
+        error = self.get('/person/1/2')
+        self.assertError(400, error)
+
+        # No person with ID 2
+        error = self.get('/person/2/3')
+        self.assertError(404, error)
 
 
     def test_reference(self):

@@ -31,10 +31,18 @@ class APITable(object):
             wheres = {pk:a.pop(0) for pk in self.table.pks}
             # The object that contains references
             referenced = self.table.get_one(**wheres)
+            if not referenced:
+                self.api.db_conn.rollback()
+                return (NOT_FOUND,
+                        error('No entry matching: {}'.format(str(wheres))))
             # Keep moving down the object until the last reference is gotten
             while a:
+                current = a.pop(0)
+                if current not in referenced:
+                    self.api.db_conn.rollback()
+                    return (BAD_REQUEST, error('No reference'))
                 try:
-                    referenced = referenced[a.pop(0)]
+                    referenced = referenced[current]
                 except KeyError:
                     # Bad reference was passed
                     self.api.db_conn.rollback()
