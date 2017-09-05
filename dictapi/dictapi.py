@@ -85,7 +85,7 @@ class APITable(object):
             # Getting an entry is possible, get it
             get_code, entry = self.GET(**wheres)
         if (entry == None or not isinstance(entry, list))\
-                and 200 <= get_code <= 300:
+                and get_code == 200:
             # Entry already exists, update it
             entry.update(kw)
             entry.flush()
