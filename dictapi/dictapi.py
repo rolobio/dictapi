@@ -40,7 +40,7 @@ class APITable(object):
                     self.api.db_conn.rollback()
                     return (NOT_FOUND, error('No reference found'))
             self.api.db_conn.rollback()
-            return (OK, dict(referenced))
+            return (OK, referenced)
         if kw:
             try:
                 entry = self.table.get_one(**kw)
@@ -51,57 +51,44 @@ class APITable(object):
             self.api.db_conn.rollback()
             return (NOT_FOUND, error('No entry matching: {}'.format(str(kw))))
         self.api.db_conn.rollback()
-        return (OK, dict(entry))
+        return (OK, entry)
 
 
     def PUT(self, **kw):
         wheres = {pk:kw[pk] for pk in self.table.pks if pk in kw}
-        code = CREATED
         entry = None
-        if wheres:
-            # The primary key(s) were specified for the put, overwrite the entry
-            try:
-                entry = self.table.get_one(**wheres)
-            except psycopg2.DataError:
-                # Invalid values in wheres
-                self.api.db_conn.rollback()
-                return (BAD_REQUEST, error('Invalid primary keys'))
-            if entry:
-                # Overwrite an entry
-                entry.update(kw)
-                entry.flush()
-                code = OK
-        # No entry was updated, so create a new one with the primary key(s) if
-        # they were provided
-        if not entry:
-            # Insert a new entry
+        code = CREATED
+
+        get_code, entry = self.GET(**wheres)
+        if 200 <= get_code <= 300:
+            # Entry already exists, update it
+            entry.update(kw)
+            entry.flush()
+            code = OK
+        elif get_code == 404:
+            # No entry found, create it
             entry = self.table(**kw).flush()
+        else:
+            # Error occured
+            return (get_code, entry)
+
         self.api.db_conn.commit()
-        return (code, dict(entry))
+        return (code, entry)
 
 
     def DELETE(self, *a, **kw):
         if len(a) > len(self.table.pks):
-            self.api.db_conn.rollback()
-            return (BAD_REQUEST, error('No entry found'))
-        if a and not kw:
-            a = list(a)
-            wheres = {pk:a.pop(0) for pk in self.table.pks}
-        elif kw and not a:
-            wheres = kw
-        try:
-            entry = self.table.get_one(**wheres)
-        except psycopg2.DataError:
-            # Invalid values in wheres
-            self.api.db_conn.rollback()
             return (BAD_REQUEST, error('Invalid primary keys'))
-        if entry:
-            # As of writing this code, entry.delete() will always return a None
+
+        get_code, entry = self.GET(*a, **kw)
+        if get_code == 200:
+            # Entry exists, delete it
             result = entry.delete()
             self.api.db_conn.commit()
             return (OK, result)
-        self.api.db_conn.rollback()
-        return (NOT_FOUND, error('No entry found'))
+        else:
+            # Error occured
+            return (get_code, entry)
 
 
 

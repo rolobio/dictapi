@@ -28,30 +28,21 @@ HTTP_METHODS = (
         'TRACE',
         )
 
-class CPJsonMixin:
 
-    def wrap(self):
-        """
-        Wrap all HTTP methods with json_out so that the methods return json
-        parseable content
-        """
-        my_methods = [i for i in dir(self) if i in HTTP_METHODS]
-        for attr in my_methods:
-            if callable(getattr(self, attr)):
-                wrapped = json_out(getattr(self, attr))
-                setattr(self, attr, wrapped)
-
-
-
-class APITable(OrigAPITable, CPJsonMixin):
+class APITable:
 
     exposed = True
 
     def __init__(self, api, table):
-        super(OrigAPITable, self).__init__()
         self.api = api
         self.table = table
-        self.wrap()
+        self.apitable = OrigAPITable(api, table)
+
+        for method_name in HTTP_METHODS:
+            if method_name not in dir(self.apitable):
+                continue
+            original_method = getattr(self.apitable, method_name)
+            setattr(self, method_name, json_out(original_method))
 
 
 
