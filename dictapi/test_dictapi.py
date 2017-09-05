@@ -69,9 +69,13 @@ class BaseTest(unittest.TestCase):
     def tearDown(self):
         try:
             # If this command succeeds, then all errors were rolled back
-            self.curs.execute('SELECT * FROM person')
+            self.curs.execute('''select count(*) from pg_locks''')
+            if self.curs.fetchall()[0][0] > 2:
+                raise AssertionError('Uncommited changes in test')
         except psycopg2.InternalError:
             raise AssertionError('Transaction errors not rolled-back')
+        finally:
+            self.conn.rollback()
         self.conn.close()
 
 
