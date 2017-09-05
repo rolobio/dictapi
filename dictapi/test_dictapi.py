@@ -151,6 +151,17 @@ class TestAPI(BaseTest):
         self.assertEqual(jake1, jake2)
 
 
+    def test_get_pagination(self):
+        names = ('Jake', 'Phil', 'Bob', 'Steve', 'Alice', 'Frank')
+        for name in names:
+            self.api.dictdb['person'](name=name).flush()
+
+        code, persons = self.api.person.GET()
+        self.assertEqual(200, code)
+        for person, name in zip(persons, names):
+            self.assertDictContains(person, {'name':name})
+
+
     def test_reference(self):
         _, jake = self.api.person.PUT(name='Jake')
         _, sales = self.api.department.PUT(name='Sales')

@@ -9,6 +9,8 @@ CREATED = 201
 BAD_REQUEST = 400
 NOT_FOUND = 404
 
+COLLECTION_SIZE = 20
+
 
 class APITable(object):
 
@@ -19,7 +21,16 @@ class APITable(object):
 
     def GET(self, *a, **kw):
         entry = None
-        if not kw and len(a) == len(self.table.pks):
+        if not kw and not a:
+            # Collection has been requested
+            entries = list(self.table.get_where().limit(COLLECTION_SIZE))
+            if not entries:
+                # No entries
+                self.api.db_conn.rollback()
+                return (NOT_FOUND, error('No entries found in collection'))
+            self.api.db_conn.rollback()
+            return (OK, entries)
+        elif not kw and len(a) == len(self.table.pks):
             # Convert positional arguments to keyword arguments if there are the
             # same amount of primary keys.  It is assumed that the arguments are
             # in the same order as the primary keys
@@ -50,6 +61,9 @@ class APITable(object):
             except psycopg2.DataError:
                 self.api.db_conn.rollback()
                 return (BAD_REQUEST, error('Invalid primary keys'))
+            except psycopg2.ProgrammingError:
+                self.api.db_conn.rollback()
+                return (BAD_REQUEST, error('Invalid names'))
         if not entry:
             self.api.db_conn.rollback()
             return (NOT_FOUND, error('No entry matching: {}'.format(str(kw))))
@@ -58,12 +72,17 @@ class APITable(object):
 
 
     def PUT(self, **kw):
+        # Inserting an entry is the default
+        get_code, entry = 404, None
         # Get the entry that matches the primary keys, otherwise the GET will
         # attempt to find an entry that may not yet contain the values we're
         # PUTing
         wheres = {pk:kw[pk] for pk in self.table.pks if pk in kw}
-        get_code, entry = self.GET(**wheres)
-        if 200 <= get_code <= 300:
+        if wheres:
+            # Getting an entry is possible, get it
+            get_code, entry = self.GET(**wheres)
+        if (entry == None or not isinstance(entry, list))\
+                and 200 <= get_code <= 300:
             # Entry already exists, update it
             entry.update(kw)
             entry.flush()

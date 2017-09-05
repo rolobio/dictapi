@@ -26,9 +26,9 @@ class BaseCherryPy(BaseTest):
         cherrypy.config.update({'log.screen':True})
 
 
-    def __request(self, method, path, data=None):
+    def __request(self, method, path, data=None, params=None):
         request = requests.Request(method, 'http://127.0.0.1:8080/api'+path,
-                data=data)
+                data=data, params=params)
         request = request.prepare()
         response = requests.Session().send(request)
         return response
@@ -92,12 +92,12 @@ class TestAPICherryPy(BaseCherryPy):
         """
         GETing an entry that doesn't exist raises an error
         """
-        error = self.get('/person', data={'id':1})
+        error = self.get('/person', params={'id':1})
         self.assertError(404, error)
 
         # Incorrect primary keys also fails
-        error = self.get('/person', data={'foo':1, 'bar':2})
-        self.assertEqual(404, error.status_code)
+        error = self.get('/person', params={'foo':1, 'bar':2})
+        self.assertEqual(400, error.status_code)
 
         # Getting Jake's 2 reference is invalid
         self.put('/person', data={'name':'Jake'})
