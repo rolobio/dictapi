@@ -167,6 +167,11 @@ class TestAPI(BaseTest):
         error = self.api.person.DELETE(1)
         self.assertError(404, error)
 
+        # Changes survive a rollback
+        self.conn.rollback()
+        error = self.api.person.DELETE(1)
+        self.assertError(404, error)
+
         # Bad Request
         response = self.api.person.DELETE(1,2)
         self.assertError(400, response)

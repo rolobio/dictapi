@@ -36,11 +36,13 @@ class APITable(object):
                     referenced = referenced[a.pop(0)]
                 except KeyError:
                     # Bad reference was passed
+                    self.api.db_conn.rollback()
                     return (NOT_FOUND, error('No reference found'))
             return (OK, dict(referenced))
         if kw:
             entry = self.table.get_one(**kw)
         if not entry:
+            self.api.db_conn.rollback()
             return (NOT_FOUND, error('No entry matching: {}'.format(str(kw))))
         self.api.db_conn.rollback()
         return (OK, dict(entry))
@@ -69,13 +71,17 @@ class APITable(object):
 
     def DELETE(self, *a):
         if len(a) > len(self.table.pks):
+            self.api.db_conn.rollback()
             return (BAD_REQUEST, error('No entry found'))
         a = list(a)
         wheres = {pk:a.pop(0) for pk in self.table.pks}
         entry = self.table.get_one(**wheres)
         if entry:
             # As of writing this code, entry.delete() will always return a None
-            return (OK, entry.delete())
+            result = entry.delete()
+            self.api.db_conn.commit()
+            return (OK, result)
+        self.api.db_conn.rollback()
         return (NOT_FOUND, error('No entry found'))
 
 
