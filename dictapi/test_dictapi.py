@@ -1,4 +1,4 @@
-from dictapi.dictapi import API
+from dictapi.dictapi import API, COLLECTION_SIZE
 from functools import partial
 import os
 import psycopg2
@@ -153,12 +153,27 @@ class TestAPI(BaseTest):
 
     def test_get_pagination(self):
         names = ('Jake', 'Phil', 'Bob', 'Steve', 'Alice', 'Frank')
+        names = names + names + names + names
         for name in names:
             self.api.dictdb['person'](name=name).flush()
+        self.conn.commit()
 
+        # Get all Persons inserted
         code, persons = self.api.person.GET()
         self.assertEqual(200, code)
+        self.assertEqual(len(persons), COLLECTION_SIZE)
+        last_id = 0
+        # Check that the people are as expected
         for person, name in zip(persons, names):
+            self.assertEqual(last_id+1, person['id'])
+            last_id = person['id']
+            self.assertDictContains(person, {'name':name})
+
+        # Get next batch of people
+        code, persons = self.api.person.GET(page=2)
+        self.assertEqual(200, code)
+        self.assertEqual(len(persons), 4)
+        for person, name in zip(persons, names[-4:]):
             self.assertDictContains(person, {'name':name})
 
 

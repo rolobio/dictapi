@@ -21,9 +21,12 @@ class APITable(object):
 
     def GET(self, *a, **kw):
         entry = None
+        page = kw.pop('page', 1)
         if not kw and not a:
             # Collection has been requested
-            entries = list(self.table.get_where().limit(COLLECTION_SIZE))
+            offset = (page-1) * COLLECTION_SIZE
+            entries = list(self.table.get_where().limit(COLLECTION_SIZE
+                ).offset(offset))
             if not entries:
                 # No entries
                 self.api.db_conn.rollback()
