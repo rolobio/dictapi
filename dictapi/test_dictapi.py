@@ -67,6 +67,11 @@ class BaseTest(unittest.TestCase):
 
 
     def tearDown(self):
+        try:
+            # If this command succeeds, then all errors were rolled back
+            self.curs.execute('SELECT * FROM person')
+        except psycopg2.InternalError:
+            raise AssertionError('Transaction errors not rolled-back')
         self.conn.close()
 
 
@@ -119,6 +124,16 @@ class TestAPI(BaseTest):
 
         self.assertResponse(200, response,
                 {'id':2, 'name':'Phil'})
+
+
+    def test_invalid_id(self):
+        """
+        PUTing and invalid ID is handled
+        """
+        error = self.api.person.PUT(id='foo')
+        self.assertError(400, error)
+        error = self.api.person.GET(id='foo')
+        self.assertError(400, error)
 
 
     def test_get(self):

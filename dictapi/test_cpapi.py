@@ -1,5 +1,5 @@
 from dictapi.test_dictapi import BaseTest
-from dictapi.cpapi import API as CPAPI
+from dictapi.cpapi import API
 from functools import partial
 import cherrypy
 import os
@@ -13,7 +13,7 @@ class BaseCherryPy(BaseTest):
     def setUp(self):
         super().setUp()
 
-        self.api = CPAPI(self.conn)
+        self.api = API(self.conn)
 
         cherrypy.config.update({
             'log.screen':False,

@@ -1,3 +1,4 @@
+import psycopg2
 from dictorm import DictDB
 
 def error(msg):
@@ -41,7 +42,11 @@ class APITable(object):
             self.api.db_conn.rollback()
             return (OK, dict(referenced))
         if kw:
-            entry = self.table.get_one(**kw)
+            try:
+                entry = self.table.get_one(**kw)
+            except psycopg2.DataError:
+                self.api.db_conn.rollback()
+                return (BAD_REQUEST, error('Invalid primary keys'))
         if not entry:
             self.api.db_conn.rollback()
             return (NOT_FOUND, error('No entry matching: {}'.format(str(kw))))
@@ -55,7 +60,12 @@ class APITable(object):
         entry = None
         if wheres:
             # The primary key(s) were specified for the put, overwrite the entry
-            entry = self.table.get_one(**wheres)
+            try:
+                entry = self.table.get_one(**wheres)
+            except psycopg2.DataError:
+                # Invalid values in wheres
+                self.api.db_conn.rollback()
+                return (BAD_REQUEST, error('Invalid primary keys'))
             if entry:
                 # Overwrite an entry
                 entry.update(kw)
