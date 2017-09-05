@@ -113,7 +113,7 @@ class APITable(object):
             except psycopg2.IntegrityError:
                 # Can't delete the entry
                 self.api.db_conn.rollback()
-                return (BAD_REQUEST, error('Cannot deleted referenced entry'))
+                return (BAD_REQUEST, error('Cannot delete referenced entry'))
             self.api.db_conn.commit()
             return (OK, result)
         else:
