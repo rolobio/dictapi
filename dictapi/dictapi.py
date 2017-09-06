@@ -121,6 +121,10 @@ class APITable(object):
             return (get_code, entry)
 
 
+    def HEAD(self, *a, **kw):
+        return (self.GET(*a, **kw)[0], None)
+
+
 
 class API(object):
 

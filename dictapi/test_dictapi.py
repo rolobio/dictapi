@@ -180,7 +180,7 @@ class TestAPI(BaseTest):
     def test_reference(self):
         _, jake = self.api.person.PUT(name='Jake')
         _, sales = self.api.department.PUT(name='Sales')
-        _, jake_dept = self.api.person_department.PUT(
+        _, jake_sales = self.api.person_department.PUT(
                 person_id=jake['id'],
                 department_id=sales['id'])
 
@@ -203,7 +203,7 @@ class TestAPI(BaseTest):
     def test_reference_delete(self):
         _, jake = self.api.person.PUT(name='Jake')
         _, sales = self.api.department.PUT(name='Sales')
-        _, jake_dept = self.api.person_department.PUT(
+        _, jake_sales = self.api.person_department.PUT(
                 person_id=jake['id'],
                 department_id=sales['id'])
 
@@ -238,6 +238,17 @@ class TestAPI(BaseTest):
         # Deletion by keyword
         jake = self.api.person.PUT(name='Jake')
         response = self.api.person.DELETE(id=2)
+        self.assertResponse(200, response, None)
+
+
+    def test_head(self):
+        # HEADing non-existant entry
+        code, entry = self.api.person.HEAD(1)
+        self.assertEqual(404, code)
+        self.assertEqual(entry, None)
+
+        jake = self.api.person.PUT(name='Jake')
+        response = self.api.person.HEAD(1)
         self.assertResponse(200, response, None)
 
 
