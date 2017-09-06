@@ -13,9 +13,6 @@ NOT_FOUND = 404
 COLLECTION_SIZE = 20
 
 
-class Default: pass
-DEFAULT = Default()
-
 def NoRead(column_name, call):
     @wraps(call)
     def func(*a, **kw):
