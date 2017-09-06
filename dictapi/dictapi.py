@@ -31,8 +31,9 @@ def NoWrite(column_name):
     def WriteModifier(call):
         def func(*a, **kw):
             if column_name in kw:
-                return (BAD_REQUEST, error('Cannot write to {}'.format(
-                    column_name)))
+                return (BAD_REQUEST,
+                        error('Cannot write to {}'.format(column_name)))
+            # Column Name not passed, execute the call
             return call(*a, **kw)
         return func
     return WriteModifier
