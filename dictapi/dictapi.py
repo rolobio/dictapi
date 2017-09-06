@@ -130,11 +130,6 @@ class HEAD(HTTPMethod):
 
 class PUT(HTTPMethod):
 
-    def __getattr__(self, name):
-        attr = super().__getattr__(name)
-        print(attr)
-        return attr
-
     def call(self, *a, **kw):
         # Inserting an entry is the default
         get_code, entry = 404, None
