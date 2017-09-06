@@ -2,6 +2,11 @@ from dictorm import DictDB
 from functools import partial, wraps
 import psycopg2
 
+__all__ = ['COLLECTION_SIZE', 'NoWrite', 'NoRead', 'API', 'APITable']
+
+COLLECTION_SIZE = 20
+
+
 def error(msg):
     return {'error':True, 'message':str(msg)}
 
@@ -9,8 +14,6 @@ OK = 200
 CREATED = 201
 BAD_REQUEST = 400
 NOT_FOUND = 404
-
-COLLECTION_SIZE = 20
 
 
 def NoRead(column_name, call):
