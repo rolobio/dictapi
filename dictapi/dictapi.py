@@ -1,6 +1,6 @@
 from datetime import datetime
 from dictorm import DictDB
-from functools import partial, wraps
+from functools import wraps
 import psycopg2
 
 __all__ = ['COLLECTION_SIZE', 'API', 'APITable',
@@ -51,7 +51,11 @@ class HTTPMethod:
 
 
     def modify(self, modifier, *a, **kw):
-        self.call = partial(modifier, self.call, *a, **kw)
+        call = self.call
+        @wraps(self.call)
+        def wrapper(*fa, **fkw):
+            return modifier(call, *fa, *a, **fkw, **kw)
+        self.call = wrapper
 
 
     def __call__(self, *a, **kw):
