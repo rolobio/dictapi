@@ -265,6 +265,8 @@ class TestAPI(BaseTest):
         self.assertDictContains(steve, {'id':4})
         self.assertNotIn('name', steve)
 
+        self.conn.rollback()
+
 
     def test_last_modified(self):
         self.api.person.PUT.modify(LastModified, 'last_modified')

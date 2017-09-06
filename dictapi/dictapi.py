@@ -22,10 +22,10 @@ BAD_REQUEST = 400
 NOT_FOUND = 404
 
 def NoRead(call, column_name, *a, **kw):
-    result = call(*a, **kw)
+    code, result = call(*a, **kw)
     # Remove the column without reporting it
-    result[1].pop(column_name, None)
-    return result
+    result.pop(column_name, None)
+    return (code, result)
 
 
 def NoWrite(call, column_name, *a, **kw):
