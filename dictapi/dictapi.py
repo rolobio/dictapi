@@ -16,27 +16,25 @@ COLLECTION_SIZE = 20
 class Default: pass
 DEFAULT = Default()
 
-def NoRead(column_name):
-    def ReadModifier(call):
-        @wraps(call)
-        def func(*a, **kw):
-            result = call(*a, **kw)
-            result[1].pop(column_name, None)
-            return result
-        return func
-    return ReadModifier
+def NoRead(column_name, call):
+    @wraps(call)
+    def func(*a, **kw):
+        result = call(*a, **kw)
+        # Remove the column without reporting it
+        result[1].pop(column_name, None)
+        return result
+    return func
 
 
-def NoWrite(column_name):
-    def WriteModifier(call):
-        def func(*a, **kw):
-            if column_name in kw:
-                return (BAD_REQUEST,
-                        error('Cannot write to {}'.format(column_name)))
-            # Column Name not passed, execute the call
-            return call(*a, **kw)
-        return func
-    return WriteModifier
+def NoWrite(column_name, call):
+    @wraps(call)
+    def func(*a, **kw):
+        if column_name in kw:
+            return (BAD_REQUEST,
+                    error('Cannot write to {}'.format(column_name)))
+        # Column Name not passed, execute the call
+        return call(*a, **kw)
+    return func
 
 
 class HTTPMethod:
@@ -48,8 +46,8 @@ class HTTPMethod:
         self.table = apitable.table
 
 
-    def restrict(self, modifier):
-        self.call = modifier(self.call)
+    def restrict(self, column_name, modifier):
+        self.call = modifier(column_name, self.call)
 
 
     def __call__(self, *a, **kw):

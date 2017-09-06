@@ -46,22 +46,12 @@ CREATE TABLE person_department (
 );
 '''
 
-DB_RESET = '''
-'''
-
 class BaseTest(unittest.TestCase):
 
     def setUp(self):
         self.conn = psycopg2.connect(**test_db_login)
         self.curs = self.conn.cursor()
-        try:
-            self.curs.execute(DB_SCHEMA)
-        except psycopg2.IntegrityError:
-            # Tables already exist, reset them
-            self.db_reset()
-        except psycopg2.ProgrammingError:
-            # Tables already exist, reset them
-            self.db_reset()
+        self.curs.execute(DB_SCHEMA)
         self.conn.commit()
         self.api = API(self.conn)
 
@@ -77,11 +67,6 @@ class BaseTest(unittest.TestCase):
         finally:
             self.conn.rollback()
         self.conn.close()
-
-
-    def db_reset(self):
-        self.conn.rollback()
-        self.curs.execute(DB_RESET)
 
 
     @classmethod
@@ -257,7 +242,7 @@ class TestAPI(BaseTest):
         self.assertIn('password_hash', frank)
 
         # stop password_hash from being read
-        self.api.person.PUT.restrict(NoRead('password_hash'))
+        self.api.person.PUT.restrict('password_hash', NoRead)
         _, jake = self.api.person.PUT(name='Jake')
         self.assertNotIn('password_hash', jake)
 
@@ -269,9 +254,15 @@ class TestAPI(BaseTest):
         self.conn.rollback()
 
         # stop password_hash from being written to
-        self.api.person.PUT.restrict(NoWrite('password_hash'))
+        self.api.person.PUT.restrict('password_hash', NoWrite)
         error = self.api.person.PUT(name='Alice', password_hash='foo')
         self.assertError(400, error)
+
+        # name is also removed
+        self.api.person.PUT.restrict('name', NoRead)
+        _, steve = self.api.person.PUT(name='Steve')
+        self.assertDictContains(steve, {'id':4})
+        self.assertNotIn('name', steve)
 
 
 
