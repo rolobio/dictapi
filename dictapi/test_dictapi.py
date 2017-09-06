@@ -243,7 +243,7 @@ class TestAPI(BaseTest):
         self.assertIn('password_hash', frank)
 
         # stop password_hash from being read
-        self.api.person.PUT.modify('password_hash', NoRead)
+        self.api.person.PUT.modify(NoRead, 'password_hash')
         _, jake = self.api.person.PUT(name='Jake')
         self.assertNotIn('password_hash', jake)
 
@@ -255,19 +255,19 @@ class TestAPI(BaseTest):
         self.conn.rollback()
 
         # stop password_hash from being written to
-        self.api.person.PUT.modify('password_hash', NoWrite)
+        self.api.person.PUT.modify(NoWrite, 'password_hash')
         error = self.api.person.PUT(name='Alice', password_hash='foo')
         self.assertError(400, error)
 
         # name is also removed
-        self.api.person.PUT.modify('name', NoRead)
+        self.api.person.PUT.modify(NoRead, 'name')
         _, steve = self.api.person.PUT(name='Steve')
         self.assertDictContains(steve, {'id':4})
         self.assertNotIn('name', steve)
 
 
     def test_last_modified(self):
-        self.api.person.PUT.modify('last_modified', LastModified)
+        self.api.person.PUT.modify(LastModified, 'last_modified')
         _, jake = self.api.person.PUT(name='Jake')
         self.assertNotEqual(jake['last_modified'], None)
 

@@ -50,8 +50,8 @@ class HTTPMethod:
         self.table = apitable.table
 
 
-    def modify(self, column_name, modifier):
-        self.call = partial(modifier, self.call, column_name)
+    def modify(self, modifier, *a, **kw):
+        self.call = partial(modifier, self.call, *a, **kw)
 
 
     def __call__(self, *a, **kw):
