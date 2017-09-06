@@ -1,5 +1,6 @@
-import psycopg2
 from dictorm import DictDB
+from functools import partial, wraps
+import psycopg2
 
 def error(msg):
     return {'error':True, 'message':str(msg)}
@@ -12,14 +13,52 @@ NOT_FOUND = 404
 COLLECTION_SIZE = 20
 
 
-class APITable(object):
+class Default: pass
+DEFAULT = Default()
 
-    def __init__(self, api, table):
-        self.api = api
-        self.table = table
+def NoRead(column_name):
+    def ReadModifier(call):
+        @wraps(call)
+        def func(*a, **kw):
+            result = call(*a, **kw)
+            result[1].pop(column_name, None)
+            return result
+        return func
+    return ReadModifier
 
 
-    def GET(self, *a, **kw):
+def NoWrite(column_name):
+    def WriteModifier(call):
+        def func(*a, **kw):
+            if column_name in kw:
+                return (BAD_REQUEST, error('Cannot write to {}'.format(
+                    column_name)))
+            return call(*a, **kw)
+        return func
+    return WriteModifier
+
+
+class HTTPMethod:
+
+    def __init__(self, apitable, name):
+        self.api = apitable.api
+        self.apitable = apitable
+        self.name = name
+        self.table = apitable.table
+
+
+    def restrict(self, modifier):
+        self.call = modifier(self.call)
+
+
+    def __call__(self, *a, **kw):
+        return self.call(*a, **kw)
+
+
+
+class GET(HTTPMethod):
+
+    def call(self, *a, **kw):
         entry = None
         page = kw.pop('page', 1)
         if not kw and not a:
@@ -74,7 +113,22 @@ class APITable(object):
         return (OK, entry)
 
 
-    def PUT(self, **kw):
+
+class HEAD(HTTPMethod):
+
+    def call(self, *a, **kw):
+        return (self.apitable.GET(*a, **kw)[0], None)
+
+
+
+class PUT(HTTPMethod):
+
+    def __getattr__(self, name):
+        attr = super().__getattr__(name)
+        print(attr)
+        return attr
+
+    def call(self, *a, **kw):
         # Inserting an entry is the default
         get_code, entry = 404, None
         # Get the entry that matches the primary keys, otherwise the GET will
@@ -83,7 +137,7 @@ class APITable(object):
         wheres = {pk:kw[pk] for pk in self.table.pks if pk in kw}
         if wheres:
             # Getting an entry is possible, get it
-            get_code, entry = self.GET(**wheres)
+            get_code, entry = self.apitable.GET(**wheres)
         if (entry == None or not isinstance(entry, list))\
                 and get_code == 200:
             # Entry already exists, update it
@@ -101,11 +155,14 @@ class APITable(object):
             return (get_code, entry)
 
 
-    def DELETE(self, *a, **kw):
+
+class DELETE(HTTPMethod):
+
+    def call(self, *a, **kw):
         if len(a) > len(self.table.pks):
             return (BAD_REQUEST, error('Invalid primary keys'))
 
-        get_code, entry = self.GET(*a, **kw)
+        get_code, entry = self.apitable.GET(*a, **kw)
         if get_code == 200:
             # Entry exists, delete it
             try:
@@ -121,8 +178,17 @@ class APITable(object):
             return (get_code, entry)
 
 
-    def HEAD(self, *a, **kw):
-        return (self.GET(*a, **kw)[0], None)
+
+class APITable(object):
+
+    def __init__(self, api, table):
+        self.api = api
+        self.table = table
+
+        self.DELETE = DELETE(self, 'DELETE')
+        self.GET = GET(self, 'GET')
+        self.HEAD = HEAD(self, 'HEAD')
+        self.PUT = PUT(self, 'PUT')
 
 
 

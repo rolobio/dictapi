@@ -1,4 +1,4 @@
-from dictapi.dictapi import API, COLLECTION_SIZE
+from dictapi.dictapi import API, COLLECTION_SIZE, NoRead, NoWrite
 from functools import partial
 import os
 import psycopg2
@@ -25,10 +25,15 @@ else:
 
 
 DB_SCHEMA = '''
+DROP TABLE IF EXISTS person_department CASCADE;
+DROP TABLE IF EXISTS person CASCADE;
+DROP TABLE IF EXISTS department CASCADE;
+
 CREATE TABLE person (
     id SERIAL PRIMARY KEY,
     name TEXT,
-    manager_id INTEGER REFERENCES person(id)
+    manager_id INTEGER REFERENCES person(id),
+    password_hash TEXT
 );
 CREATE TABLE department (
     id SERIAL PRIMARY KEY,
@@ -42,11 +47,6 @@ CREATE TABLE person_department (
 '''
 
 DB_RESET = '''
-DELETE FROM person_department;
-DELETE FROM person;
-DELETE FROM department;
-ALTER SEQUENCE person_id_seq RESTART WITH 1;
-ALTER SEQUENCE department_id_seq RESTART WITH 1;
 '''
 
 class BaseTest(unittest.TestCase):
@@ -250,6 +250,28 @@ class TestAPI(BaseTest):
         jake = self.api.person.PUT(name='Jake')
         response = self.api.person.HEAD(1)
         self.assertResponse(200, response, None)
+
+
+    def test_restrict(self):
+        _, frank = self.api.person.PUT(name='Frank')
+        self.assertIn('password_hash', frank)
+
+        # stop password_hash from being read
+        self.api.person.PUT.restrict(NoRead('password_hash'))
+        _, jake = self.api.person.PUT(name='Jake')
+        self.assertNotIn('password_hash', jake)
+
+        # password_hash can still be written to
+        _, john = self.api.person.PUT(name='John', password_hash='foo')
+        self.assertNotIn('password_hash', john)
+        john = self.api.dictdb['person'].get_one(name='John')
+        self.assertEqual(john['password_hash'], 'foo')
+        self.conn.rollback()
+
+        # stop password_hash from being written to
+        self.api.person.PUT.restrict(NoWrite('password_hash'))
+        error = self.api.person.PUT(name='Alice', password_hash='foo')
+        self.assertError(400, error)
 
 
 
