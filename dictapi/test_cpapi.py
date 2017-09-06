@@ -36,11 +36,11 @@ class BaseCherryPy(BaseTest):
         return response
 
 
-    def get(self, *a, **kw):    return self.__request('get', *a, **kw)
-    def put(self, *a, **kw):    return self.__request('put', *a, **kw)
-    def post(self, *a, **kw):   return self.__request('post', *a, **kw)
-    def delete(self, *a, **kw): return self.__request('delete', *a, **kw)
-    def head(self, *a, **kw):   return self.__request('head', *a, **kw)
+    def get(self, *a, **kw):    return self.__request('GET', *a, **kw)
+    def put(self, *a, **kw):    return self.__request('PUT', *a, **kw)
+    def post(self, *a, **kw):   return self.__request('POST', *a, **kw)
+    def delete(self, *a, **kw): return self.__request('DELETE', *a, **kw)
+    def head(self, *a, **kw):   return self.__request('HEAD', *a, **kw)
 
 
     def assertResponse(self, expected_code, response, expected_entry):
