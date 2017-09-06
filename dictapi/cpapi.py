@@ -1,8 +1,16 @@
-import types
-import json
-from functools import wraps
+from datetime import datetime, date
 from dictapi.dictapi import APITable as OrigAPITable, API as OrigAPI
+from dictapi.dictapi import DATETIME_FORMAT
+from functools import wraps
 import cherrypy
+import json
+import types
+
+
+def json_serial(obj):
+    if isinstance(obj, (datetime, date)):
+        return obj.isoformat()
+    raise TypeError("Type {} not serializable".format(type(obj)))
 
 
 def json_out(func):
@@ -11,7 +19,7 @@ def json_out(func):
         cherrypy.response.headers['Content-Type'] = 'application/json'
         code, entry = func(*a, **kw)
         cherrypy.response.status = code
-        out = json.dumps(entry).encode()
+        out = json.dumps(entry, default=json_serial).encode()
         return out
     return wrapper
 

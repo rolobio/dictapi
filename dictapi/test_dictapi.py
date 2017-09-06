@@ -1,4 +1,4 @@
-from dictapi.dictapi import API, COLLECTION_SIZE, NoRead, NoWrite
+from dictapi.dictapi import API, COLLECTION_SIZE, NoRead, NoWrite, LastModified
 from functools import partial
 import os
 import psycopg2
@@ -33,7 +33,8 @@ CREATE TABLE person (
     id SERIAL PRIMARY KEY,
     name TEXT,
     manager_id INTEGER REFERENCES person(id),
-    password_hash TEXT
+    password_hash TEXT,
+    last_modified TIMESTAMP DEFAULT current_timestamp
 );
 CREATE TABLE department (
     id SERIAL PRIMARY KEY,
@@ -237,12 +238,12 @@ class TestAPI(BaseTest):
         self.assertResponse(200, response, None)
 
 
-    def test_restrict(self):
+    def test_modify(self):
         _, frank = self.api.person.PUT(name='Frank')
         self.assertIn('password_hash', frank)
 
         # stop password_hash from being read
-        self.api.person.PUT.restrict('password_hash', NoRead)
+        self.api.person.PUT.modify('password_hash', NoRead)
         _, jake = self.api.person.PUT(name='Jake')
         self.assertNotIn('password_hash', jake)
 
@@ -254,15 +255,29 @@ class TestAPI(BaseTest):
         self.conn.rollback()
 
         # stop password_hash from being written to
-        self.api.person.PUT.restrict('password_hash', NoWrite)
+        self.api.person.PUT.modify('password_hash', NoWrite)
         error = self.api.person.PUT(name='Alice', password_hash='foo')
         self.assertError(400, error)
 
         # name is also removed
-        self.api.person.PUT.restrict('name', NoRead)
+        self.api.person.PUT.modify('name', NoRead)
         _, steve = self.api.person.PUT(name='Steve')
         self.assertDictContains(steve, {'id':4})
         self.assertNotIn('name', steve)
+
+
+    def test_last_modified(self):
+        self.api.person.PUT.modify('last_modified', LastModified)
+        _, jake = self.api.person.PUT(name='Jake')
+        self.assertNotEqual(jake['last_modified'], None)
+
+        # Update Jake after time has passed
+        from time import sleep
+        sleep(0.1)
+        _, jake2 = self.api.person.PUT(id=1)
+        self.assertEqual(jake['id'], jake2['id'])
+        # Jake's last_modified date is now updated
+        self.assertGreater(jake2['last_modified'], jake['last_modified'])
 
 
 

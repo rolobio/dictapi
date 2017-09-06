@@ -1,10 +1,16 @@
+from datetime import datetime
 from dictorm import DictDB
 from functools import partial, wraps
 import psycopg2
 
-__all__ = ['COLLECTION_SIZE', 'NoWrite', 'NoRead', 'API', 'APITable']
+__all__ = ['COLLECTION_SIZE', 'API', 'APITable',
+        'NoWrite',
+        'NoRead'
+        'LastModified',
+        ]
 
 COLLECTION_SIZE = 20
+DATETIME_FORMAT = '%Y-%m-%d %H:%M:%S.%f'
 
 
 def error(msg):
@@ -15,26 +21,24 @@ CREATED = 201
 BAD_REQUEST = 400
 NOT_FOUND = 404
 
-
-def NoRead(column_name, call):
-    @wraps(call)
-    def func(*a, **kw):
-        result = call(*a, **kw)
-        # Remove the column without reporting it
-        result[1].pop(column_name, None)
-        return result
-    return func
+def NoRead(call, column_name, *a, **kw):
+    result = call(*a, **kw)
+    # Remove the column without reporting it
+    result[1].pop(column_name, None)
+    return result
 
 
-def NoWrite(column_name, call):
-    @wraps(call)
-    def func(*a, **kw):
-        if column_name in kw:
-            return (BAD_REQUEST,
-                    error('Cannot write to {}'.format(column_name)))
-        # Column Name not passed, execute the call
-        return call(*a, **kw)
-    return func
+def NoWrite(call, column_name, *a, **kw):
+    if column_name in kw:
+        return (BAD_REQUEST,
+                error('Cannot write to {}'.format(column_name)))
+    # Column Name not passed, execute the call
+    return call(*a, **kw)
+
+
+def LastModified(call, column_name, *a, **kw):
+    kw[column_name] = datetime.now()
+    return call(*a, **kw)
 
 
 class HTTPMethod:
@@ -46,8 +50,8 @@ class HTTPMethod:
         self.table = apitable.table
 
 
-    def restrict(self, column_name, modifier):
-        self.call = modifier(column_name, self.call)
+    def modify(self, column_name, modifier):
+        self.call = partial(modifier, self.call, column_name)
 
 
     def __call__(self, *a, **kw):
