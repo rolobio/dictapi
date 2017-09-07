@@ -67,7 +67,11 @@ class GET(HTTPMethod):
 
     def call(self, *a, **kw):
         entry = None
-        page = int(kw.pop('page', 1))
+        try:
+            page = int(kw.pop('page', 1))
+        except ValueError:
+            return (BAD_REQUEST, error('Invalid page value'))
+
         if not kw and not a:
             # Collection has been requested
             offset = (page-1) * COLLECTION_SIZE

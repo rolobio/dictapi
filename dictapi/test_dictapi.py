@@ -143,6 +143,10 @@ class TestAPI(BaseTest):
             self.api.dictdb['person'](name=name).flush()
         self.conn.commit()
 
+        # Attempt to get bad page
+        error = self.api.person.GET(page='foo')
+        self.assertError(400, error)
+
         # Get all Persons inserted
         code, persons = self.api.person.GET()
         self.assertEqual(200, code)
