@@ -67,7 +67,7 @@ class GET(HTTPMethod):
 
     def call(self, *a, **kw):
         entry = None
-        page = kw.pop('page', 1)
+        page = int(kw.pop('page', 1))
         if not kw and not a:
             # Collection has been requested
             offset = (page-1) * COLLECTION_SIZE
@@ -109,10 +109,10 @@ class GET(HTTPMethod):
                 entry = self.table.get_one(**kw)
             except psycopg2.DataError:
                 self.api.db_conn.rollback()
-                return (BAD_REQUEST, error('Invalid primary keys'))
+                return (BAD_REQUEST, error('Invalid primary key(s)'))
             except psycopg2.ProgrammingError:
                 self.api.db_conn.rollback()
-                return (BAD_REQUEST, error('Invalid names'))
+                return (BAD_REQUEST, error('Invalid name(s)'))
         if not entry:
             self.api.db_conn.rollback()
             return (NOT_FOUND, error('No entry matching: {}'.format(str(kw))))

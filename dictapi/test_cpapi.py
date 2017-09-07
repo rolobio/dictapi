@@ -1,7 +1,9 @@
 from dictapi.cpapi import API
+from dictapi.dictapi import NoRead, NoWrite, LastModified, COLLECTION_SIZE
 from dictapi.test_dictapi import BaseTest
 from functools import partial
 import cherrypy
+import json
 import os
 import psycopg2
 import requests
@@ -137,5 +139,117 @@ class TestAPICherryPy(BaseCherryPy):
         # Same entry can be gotten directly, rather than through substratum
         sales3 = self.get('/person/1/person_department/department').json()
         self.assertEqual(sales, sales3)
+
+
+    def test_modify(self):
+        jake = self.put('/person', data={'name':'Jake'}).json()
+        self.assertIn('password_hash', jake)
+        self.assertNotEqual(jake['last_modified'], None)
+
+        # Enable LastModified to track changes
+        self.api.person.apitable.PUT.modify(LastModified, 'last_modified')
+        original_modified = jake['last_modified']
+
+        # Disallow reading of password_hash
+        self.api.person.apitable.GET.modify(NoRead, 'password_hash')
+        self.api.person.apitable.PUT.modify(NoRead, 'password_hash')
+        jake = self.get('/person', params={'id':1}).json()
+        self.assertIsInstance(jake, dict)
+        self.assertNotIn('password_hash', jake)
+
+        # Write to password_hash
+        jake2 = self.put('/person', data={'id':1, 'name':'Jake',
+            'password_hash':'foobar'}).json()
+        self.assertEqual(jake['id'], jake2['id'])
+        self.assertNotIn('password_hash', jake2)
+        self.assertEqual(
+                self.api.person.table.get_one(1)['password_hash'],
+                'foobar')
+        self.conn.rollback()
+
+        # Disallow writing to password_hash
+        self.api.person.apitable.PUT.modify(NoWrite, 'password_hash')
+        error = self.put('/person', data={'id':1, 'password_hash':'error'})
+        self.assertError(400, error)
+
+        # Writing is still possible
+        frank = self.put('/person', data={'id':1, 'name':'Frank'}).json()
+        self.assertDictContains(frank, {'id':1, 'name':'Frank'})
+
+        self.assertGreater(frank['last_modified'], original_modified)
+
+
+    def test_head(self):
+        jake = self.put('/person', data={'name':'Jake'}).json()
+        head = self.head('/person', params={'id':1})
+        self.assertEqual(head.status_code, 200)
+        # Resulting JSON is an empty dict, which raises an error when decoded
+        self.assertRaises(json.decoder.JSONDecodeError, head.json)
+
+
+    def test_delete(self):
+        # Too many primary keys
+        error = self.delete('/person/1/2')
+        self.assertError(400, error)
+
+        # No entry, yet
+        error = self.delete('/person/1')
+        self.assertError(404, error)
+
+        # Create and delete Jake
+        self.put('/person', data={'name':'Jake'})
+        response = self.delete('/person/1')
+        self.assertEqual(response.status_code, 200)
+
+        # Create Jake with referenced column, delete will fail
+        self.put('/person', data={'name':'Jake'})
+        self.put('/department', data={'name':'Sales'})
+        self.put('/person_department', data={'person_id':2, 'department_id':1})
+        error = self.delete('/person/2')
+        self.assertError(400, error)
+
+
+    def test_get_pagination(self):
+        response = self.get('/person')
+        self.assertEqual(404, response.status_code)
+
+        names = ('Jake', 'Phil', 'Bob', 'Steve', 'Alice', 'Frank')*4
+        for name in names:
+            self.api.dictdb['person'](name=name).flush()
+        self.conn.commit()
+
+        # Get all Persons inserted
+        response = self.get('/person')
+        self.assertEqual(200, response.status_code)
+        persons = response.json()
+        self.assertEqual(len(persons), COLLECTION_SIZE)
+        last_id = 0
+        for person, name in zip(persons, names):
+            self.assertEqual(last_id+1, person['id'])
+            last_id = person['id']
+            self.assertDictContains(person, {'name':name})
+
+        response = self.get('/person', params={'page':2})
+        self.assertEqual(200, response.status_code)
+        persons = response.json()
+        self.assertEqual(len(persons), 4)
+        for person, name in zip(persons, names[-4:]):
+            self.assertDictContains(person, {'name':name})
+
+
+    def test_errors(self):
+        # No person
+        error = self.get('/person', params={'id':1})
+        self.assertError(404, error)
+
+        # Bad ID value
+        error = self.get('/person', params={'id':'foo'})
+        self.assertError(400, error)
+        error = self.put('/person', data={'id':'foo'})
+        self.assertError(400, error)
+
+        # Bad column name
+        error = self.get('/person', params={'foo':'bar'})
+        self.assertError(400, error)
 
 

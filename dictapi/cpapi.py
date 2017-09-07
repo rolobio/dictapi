@@ -10,7 +10,8 @@ import types
 def json_serial(obj):
     if isinstance(obj, (datetime, date)):
         return obj.isoformat()
-    raise TypeError("Type {} not serializable".format(type(obj)))
+    raise TypeError("Type {} not serializable".format(type(obj))
+            ) # pragma: no cover
 
 
 def json_out(func):
@@ -19,7 +20,10 @@ def json_out(func):
         cherrypy.response.headers['Content-Type'] = 'application/json'
         code, entry = func(*a, **kw)
         cherrypy.response.status = code
-        out = json.dumps(entry, default=json_serial).encode()
+        if entry == None:
+            out = {}
+        else:
+            out = json.dumps(entry, default=json_serial).encode()
         return out
     return wrapper
 

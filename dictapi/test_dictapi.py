@@ -138,8 +138,7 @@ class TestAPI(BaseTest):
 
 
     def test_get_pagination(self):
-        names = ('Jake', 'Phil', 'Bob', 'Steve', 'Alice', 'Frank')
-        names = names + names + names + names
+        names = ('Jake', 'Phil', 'Bob', 'Steve', 'Alice', 'Frank')*4
         for name in names:
             self.api.dictdb['person'](name=name).flush()
         self.conn.commit()
