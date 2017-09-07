@@ -18,12 +18,19 @@ def json_out(func):
     @wraps(func)
     def wrapper(*a, **kw):
         cherrypy.response.headers['Content-Type'] = 'application/json'
-        code, entry = func(*a, **kw)
+        code, result = func(*a, **kw)
+
+        # Remove references from any dictorm.Dict
+        if 'no_refs' in dir(result):
+            result = result.no_refs()
+        elif isinstance(result, list):
+            result = [i.no_refs() for i in result]
+
         cherrypy.response.status = code
-        if entry == None:
+        if result == None:
             out = {}
         else:
-            out = json.dumps(entry, default=json_serial).encode()
+            out = json.dumps(result, default=json_serial).encode()
         return out
     return wrapper
 

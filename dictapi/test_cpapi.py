@@ -142,6 +142,10 @@ class TestAPICherryPy(BaseCherryPy):
         sales3 = self.get('/person/1/person_department/department').json()
         self.assertEqual(sales, sales3)
 
+        # The "department" reference is set, but not gotten
+        jake = self.get('/person/1').json()
+        self.assertNotIn('department', jake)
+
 
     def test_modify(self):
         jake = self.put('/person', data={'name':'Jake'}).json()
@@ -212,6 +216,14 @@ class TestAPICherryPy(BaseCherryPy):
 
 
     def test_get_pagination(self):
+        # department is referenced through person_department
+        Person, Department = self.api.person.table, self.api.department.table
+        PD = self.api.person_department.table
+        Person['person_department'] = Person['id'] == PD['person_id']
+        PD['department'] = PD['department_id'] == Department['id']
+        Person['department'] = Person['person_department'].substratum(
+                'department')
+
         response = self.get('/person')
         self.assertEqual(404, response.status_code)
 
@@ -230,6 +242,7 @@ class TestAPICherryPy(BaseCherryPy):
             self.assertEqual(last_id+1, person['id'])
             last_id = person['id']
             self.assertDictContains(person, {'name':name})
+            self.assertNotIn('department', person)
 
         response = self.get('/person', params={'page':2})
         self.assertEqual(200, response.status_code)
