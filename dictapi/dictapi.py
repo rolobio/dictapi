@@ -21,6 +21,18 @@ CREATED = 201
 BAD_REQUEST = 400
 NOT_FOUND = 404
 
+HTTP_METHODS = (
+        'CONNECT',
+        'DELETE',
+        'GET',
+        'HEAD',
+        'OPTIONS',
+        'PATCH',
+        'POST',
+        'PUT',
+        'TRACE',
+        )
+
 def NoRead(call, column_name, *a, **kw):
     code, result = call(*a, **kw)
     # Remove the column without reporting it

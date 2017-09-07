@@ -1,6 +1,6 @@
 from datetime import datetime, date
 from dictapi.dictapi import APITable as OrigAPITable, API as OrigAPI
-from dictapi.dictapi import DATETIME_FORMAT
+from dictapi.dictapi import DATETIME_FORMAT, HTTP_METHODS
 from functools import wraps
 import cherrypy
 import json
@@ -28,19 +28,6 @@ def json_out(func):
     return wrapper
 
 
-HTTP_METHODS = (
-        'CONNECT',
-        'DELETE',
-        'GET',
-        'HEAD',
-        'OPTIONS',
-        'PATCH',
-        'POST',
-        'PUT',
-        'TRACE',
-        )
-
-
 class APITable:
 
     exposed = True
@@ -55,6 +42,17 @@ class APITable:
                 continue
             original_method = getattr(self.apitable, method_name)
             setattr(self, method_name, json_out(original_method))
+
+
+    def _options(self):
+        return sorted([i for i in dir(self) if i in HTTP_METHODS])
+
+
+    def OPTIONS(self):
+        cherrypy.response.headers['Content-Type'] = 'application/json'
+        options = self._options()
+        cherrypy.response.headers['Allow'] = ', '.join(options)
+        return json.dumps(options).encode()
 
 
 

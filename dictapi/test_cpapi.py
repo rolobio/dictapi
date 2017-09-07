@@ -15,6 +15,7 @@ class BaseCherryPy(BaseTest):
     def setUp(self):
         super().setUp()
 
+        # This API comes from the CherryPy API module
         self.api = API(self.conn)
 
         cherrypy.config.update({
@@ -38,11 +39,12 @@ class BaseCherryPy(BaseTest):
         return response
 
 
-    def get(self, *a, **kw):    return self.__request('GET', *a, **kw)
-    def put(self, *a, **kw):    return self.__request('PUT', *a, **kw)
-    def post(self, *a, **kw):   return self.__request('POST', *a, **kw)
-    def delete(self, *a, **kw): return self.__request('DELETE', *a, **kw)
-    def head(self, *a, **kw):   return self.__request('HEAD', *a, **kw)
+    def delete(self, *a, **kw):  return self.__request('DELETE', *a, **kw)
+    def get(self, *a, **kw):     return self.__request('GET', *a, **kw)
+    def head(self, *a, **kw):    return self.__request('HEAD', *a, **kw)
+    def options(self, *a, **kw): return self.__request('OPTIONS', *a, **kw)
+    def post(self, *a, **kw):    return self.__request('POST', *a, **kw)
+    def put(self, *a, **kw):     return self.__request('PUT', *a, **kw)
 
 
     def assertResponse(self, expected_code, response, expected_entry):
@@ -251,5 +253,20 @@ class TestAPICherryPy(BaseCherryPy):
         # Bad column name
         error = self.get('/person', params={'foo':'bar'})
         self.assertError(400, error)
+
+
+    def test_options(self):
+        expected_options = ['DELETE', 'GET', 'HEAD', 'OPTIONS', 'PUT']
+        response = self.options('/person')
+        self.assertEqual(response.headers['Allow'],
+                ', '.join(expected_options))
+        self.assertEqual(response.json(), expected_options)
+
+        del self.api.person.HEAD
+        expected_options = ['DELETE', 'GET', 'OPTIONS', 'PUT']
+        response = self.options('/person')
+        self.assertEqual(response.headers['Allow'],
+                ', '.join(expected_options))
+        self.assertEqual(response.json(), expected_options)
 
 
