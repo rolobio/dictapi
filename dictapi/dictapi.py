@@ -66,7 +66,9 @@ class HTTPMethod:
         call = self.call
         @wraps(self.call)
         def wrapper(*fa, **fkw):
-            return modifier(call, *fa, *a, **fkw, **kw)
+            result = modifier(call, *a, *fa, **fkw, **kw)
+            self.api.db_conn.rollback()
+            return result
         self.call = wrapper
 
 

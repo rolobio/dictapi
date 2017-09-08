@@ -255,7 +255,6 @@ class TestAPI(BaseTest):
         self.assertNotIn('password_hash', john)
         john = self.api.dictdb['person'].get_one(name='John')
         self.assertEqual(john['password_hash'], 'foo')
-        self.conn.rollback()
 
         # stop password_hash from being written to
         self.api.person.PUT.modify(NoWrite, 'password_hash')
@@ -267,8 +266,6 @@ class TestAPI(BaseTest):
         _, steve = self.api.person.PUT(name='Steve')
         self.assertDictContains(steve, {'id':4})
         self.assertNotIn('name', steve)
-
-        self.conn.rollback()
 
 
     def test_last_modified(self):
@@ -283,6 +280,30 @@ class TestAPI(BaseTest):
         self.assertEqual(jake['id'], jake2['id'])
         # Jake's last_modified date is now updated
         self.assertGreater(jake2['last_modified'], jake['last_modified'])
+
+
+    def test_idempotent(self):
+        from datetime import date
+
+        # PUT in a person, their last_modified should be the current datetime
+        _, jake = self.api.person.PUT(name='Jake')
+        self.assertGreater(jake['last_modified'].date(), date.min)
+
+        def FakeLastModified(call, column_name, *a, **kw):
+            code, result = call(*a, **kw)
+            # Attempt to change the column, this should be rolled back
+            result[column_name] = date.min
+            result.flush()
+            return (code, result)
+
+        self.api.person.GET.modify(FakeLastModified, 'last_modified')
+
+        # The inserted person can be gotten
+        _, jake2 = self.api.person.GET(1)
+        self.assertEqual(jake['id'], jake2['id'])
+        self.assertEqual(jake['name'], jake2['name'])
+        self.assertNotEqual(jake2['last_modified'], date.min)
+
 
 
 
