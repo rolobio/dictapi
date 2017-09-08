@@ -148,8 +148,8 @@ class TestAPI(BaseTest):
 
 
     def test_get_pagination(self):
-        # Range greater than any entry returns a 404
-        code, error = self.api.person.GET_RANGE('40-60')
+        # No entries, yet
+        code, error = self.api.person.GET_RANGE('1-20')
         self.assertEqual(404, code)
 
         # End is higher than the start
@@ -158,6 +158,14 @@ class TestAPI(BaseTest):
 
         # Too many values
         code, error = self.api.person.GET_RANGE('1-2-3')
+        self.assertEqual(400, code)
+
+        # Not integers
+        code, error = self.api.person.GET_RANGE('foo-bar')
+        self.assertEqual(400, code)
+
+        # Not integers
+        code, error = self.api.person.GET_RANGE('1.0-2')
         self.assertEqual(400, code)
 
         names = ('Jake', 'Phil', 'Bob', 'Steve', 'Alice', 'Frank')*4
@@ -340,7 +348,6 @@ class TestAPI(BaseTest):
         self.assertEqual(jake['id'], jake2['id'])
         self.assertEqual(jake['name'], jake2['name'])
         self.assertNotEqual(jake2['last_modified'], date.min)
-
 
 
 

@@ -132,17 +132,20 @@ class GET_RANGE(HTTPMethod):
     def call(self, ranges, *a, **kw):
         offset, end = 0, COLLECTION_SIZE
         if ranges:
-            if '-' not in ranges or ranges.count('-') != 1:
+            try:
+                if '-' not in ranges or ranges.count('-') != 1:
+                    return (BAD_REQUEST, error('Invalid range value'))
+                elif ranges.startswith('-'):
+                    # Only end is specified
+                    end = int(ranges.lstrip('-'))
+                elif ranges.endswith('-'):
+                    # Only offset is specified
+                    offset = int(ranges.rstrip('-'))
+                else:
+                    offset, end = ranges.split('-')
+                    offset, end = int(offset), int(end)
+            except ValueError:
                 return (BAD_REQUEST, error('Invalid range value'))
-            elif ranges.startswith('-'):
-                # Only end is specified
-                end = int(ranges.lstrip('-'))
-            elif ranges.endswith('-'):
-                # Only offset is specified
-                offset = int(ranges.rstrip('-'))
-            else:
-                offset, end = ranges.split('-')
-                offset, end = int(offset), int(end)
 
         # Range is inclusive
         offset = offset - 1 if offset > 0 else offset
