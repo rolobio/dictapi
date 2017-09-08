@@ -31,9 +31,9 @@ class BaseCherryPy(BaseTest):
         #cherrypy.config.update({'log.screen':True})
 
 
-    def __request(self, method, path, data=None, params=None):
+    def __request(self, method, path, data=None, params=None, headers=None):
         request = requests.Request(method, 'http://127.0.0.1:8080/api'+path,
-                data=data, params=params)
+                data=data, params=params, headers=headers)
         request = request.prepare()
         response = requests.Session().send(request)
         return response
@@ -233,8 +233,8 @@ class TestAPICherryPy(BaseCherryPy):
         self.conn.commit()
 
         # Get all Persons inserted
-        response = self.get('/person')
-        self.assertEqual(200, response.status_code)
+        response = self.get('/person', headers={'Range':'1-'})
+        self.assertEqual(200, response.status_code, msg=response.content)
         persons = response.json()
         self.assertEqual(len(persons), COLLECTION_SIZE)
         last_id = 0
@@ -244,7 +244,8 @@ class TestAPICherryPy(BaseCherryPy):
             self.assertDictContains(person, {'name':name})
             self.assertNotIn('department', person)
 
-        response = self.get('/person', params={'page':2})
+        response = self.get('/person', params={'page':2},
+                headers={'Range':'21-40'})
         self.assertEqual(200, response.status_code)
         persons = response.json()
         self.assertEqual(len(persons), 4)

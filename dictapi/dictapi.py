@@ -55,10 +55,9 @@ def LastModified(call, column_name, *a, **kw):
 
 class HTTPMethod:
 
-    def __init__(self, apitable, name):
+    def __init__(self, apitable):
         self.api = apitable.api
         self.apitable = apitable
-        self.name = name
         self.table = apitable.table
 
 
@@ -81,23 +80,7 @@ class GET(HTTPMethod):
 
     def call(self, *a, **kw):
         entry = None
-        try:
-            page = int(kw.pop('page', 1))
-        except ValueError:
-            return (BAD_REQUEST, error('Invalid page value'))
-
-        if not kw and not a:
-            # Collection has been requested
-            offset = (page-1) * COLLECTION_SIZE
-            entries = list(self.table.get_where().limit(COLLECTION_SIZE
-                ).offset(offset))
-            if not entries:
-                self.api.db_conn.rollback()
-                return (NOT_FOUND, error('No entries found in collection'))
-
-            self.api.db_conn.rollback()
-            return (OK, entries)
-        elif not kw and len(a) == len(self.table.pks):
+        if not kw and len(a) == len(self.table.pks):
             # Convert positional arguments to keyword arguments if there are the
             # same amount of primary keys.  It is assumed that the arguments are
             # in the same order as the primary keys
@@ -136,6 +119,43 @@ class GET(HTTPMethod):
             return (NOT_FOUND, error('No entry matching: {}'.format(str(kw))))
         self.api.db_conn.rollback()
         return (OK, entry)
+
+
+
+class GET_RANGE(HTTPMethod):
+
+    def __init__(self, *a, **kw):
+        super().__init__(*a, **kw)
+        self.maximum_range = COLLECTION_SIZE
+
+
+    def call(self, ranges, *a, **kw):
+        offset, end = 0, COLLECTION_SIZE
+        if ranges:
+            if '-' not in ranges or ranges.count('-') != 1:
+                return (BAD_REQUEST, error('Invalid range value'))
+            elif ranges.startswith('-'):
+                # Only end is specified
+                end = int(ranges.lstrip('-'))
+            elif ranges.endswith('-'):
+                # Only offset is specified
+                offset = int(ranges.rstrip('-'))
+            else:
+                offset, end = ranges.split('-')
+                offset, end = int(offset), int(end)
+
+        # Range is inclusive
+        offset = offset - 1 if offset > 0 else offset
+
+        if offset >= end:
+            return (BAD_REQUEST, error('Invalid range value'))
+
+        limit = end - offset
+        entries = list(self.table.get_where().offset(offset).limit(limit))
+        self.api.db_conn.rollback()
+        if not entries:
+            return (NOT_FOUND, error('No entries found in range'))
+        return (OK, entries)
 
 
 
@@ -205,10 +225,11 @@ class APITable(object):
         self.api = api
         self.table = table
 
-        self.DELETE = DELETE(self, 'DELETE')
-        self.GET = GET(self, 'GET')
-        self.HEAD = HEAD(self, 'HEAD')
-        self.PUT = PUT(self, 'PUT')
+        self.DELETE = DELETE(self)
+        self.GET = GET(self)
+        self.GET_RANGE = GET_RANGE(self)
+        self.HEAD = HEAD(self)
+        self.PUT = PUT(self)
 
 
 

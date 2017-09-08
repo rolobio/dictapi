@@ -138,17 +138,29 @@ class TestAPI(BaseTest):
 
 
     def test_get_pagination(self):
+        # Range greater than any entry returns a 404
+        code, error = self.api.person.GET_RANGE('40-60')
+        self.assertEqual(404, code)
+
+        # End is higher than the start
+        code, error = self.api.person.GET_RANGE('50-40')
+        self.assertEqual(400, code)
+
+        # Too many values
+        code, error = self.api.person.GET_RANGE('1-2-3')
+        self.assertEqual(400, code)
+
         names = ('Jake', 'Phil', 'Bob', 'Steve', 'Alice', 'Frank')*4
         for name in names:
             self.api.dictdb['person'](name=name).flush()
         self.conn.commit()
 
-        # Attempt to get bad page
-        error = self.api.person.GET(page='foo')
+        # Attempt to get bad range
+        error = self.api.person.GET_RANGE('foo')
         self.assertError(400, error)
 
         # Get all Persons inserted
-        code, persons = self.api.person.GET()
+        code, persons = self.api.person.GET_RANGE(None)
         self.assertEqual(200, code)
         self.assertEqual(len(persons), COLLECTION_SIZE)
         last_id = 0
@@ -159,10 +171,20 @@ class TestAPI(BaseTest):
             self.assertDictContains(person, {'name':name})
 
         # Get next batch of people
-        code, persons = self.api.person.GET(page=2)
+        code, persons = self.api.person.GET_RANGE('21-40')
         self.assertEqual(200, code)
         self.assertEqual(len(persons), 4)
         for person, name in zip(persons, names[-4:]):
+            self.assertDictContains(person, {'name':name})
+
+        # It is possible to request entries greater than the start
+        code, persons = self.api.person.GET_RANGE('1-')
+        self.assertEqual(code, 200, msg=persons)
+        self.assertEqual(len(persons), COLLECTION_SIZE)
+        last_id = 0
+        for person, name in zip(persons, names):
+            self.assertEqual(last_id+1, person['id'])
+            last_id = person['id']
             self.assertDictContains(person, {'name':name})
 
 

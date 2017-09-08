@@ -47,12 +47,29 @@ class APITable:
         for method_name in HTTP_METHODS:
             if method_name not in dir(self.apitable):
                 continue
+            if method_name in dir(self):
+                continue
             original_method = getattr(self.apitable, method_name)
             setattr(self, method_name, json_out(original_method))
 
 
     def _options(self):
         return sorted([i for i in dir(self) if i in HTTP_METHODS])
+
+    
+    def GET(self, *a, **kw):
+        """
+        If Range is passed in the HTTP headers, use GET_RANGE, otherwise use GET
+        """
+        ranges = cherrypy.request.headers.get('Range', None)
+        a = list(a)
+        if ranges:
+            get = getattr(self.apitable, 'GET_RANGE')
+            a.insert(0, ranges)
+        else:
+            get = getattr(self.apitable, 'GET')
+        result = json_out(get)(*a, **kw)
+        return result
 
 
     def OPTIONS(self):
