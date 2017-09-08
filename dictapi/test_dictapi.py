@@ -197,6 +197,16 @@ class TestAPI(BaseTest):
             last_id = person['id']
             self.assertDictContains(person, {'name':name})
 
+        # It is also possible to request entries less than the end
+        code, persons = self.api.person.GET_RANGE('-5')
+        self.assertEqual(code, 200, msg=persons)
+        self.assertEqual(len(persons), 5)
+        last_id = 0
+        for person, name in zip(persons, names):
+            self.assertEqual(last_id+1, person['id'])
+            last_id = person['id']
+            self.assertDictContains(person, {'name':name})
+
 
     def test_reference(self):
         _, jake = self.api.person.PUT(name='Jake')

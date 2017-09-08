@@ -44,8 +44,10 @@ class APITable:
 
         for method_name in HTTP_METHODS:
             if method_name not in dir(self.apitable):
+                # Only wrap if its already defined
                 continue
             if method_name in dir(self):
+                # Don't overwrite existing methods of THIS APITable, (see GET)
                 continue
             original_method = getattr(self.apitable, method_name)
             setattr(self, method_name, json_out(original_method))
