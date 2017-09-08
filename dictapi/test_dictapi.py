@@ -93,6 +93,16 @@ class BaseTest(unittest.TestCase):
             self.assertEqual(entry, None)
 
 
+    def reference_pd(self):
+        # department is referenced through person_department
+        Person, Department = self.api.person.table, self.api.department.table
+        PD = self.api.person_department.table
+        Person['person_department'] = Person['id'] == PD['person_id']
+        PD['department'] = PD['department_id'] == Department['id']
+        Person['department'] = Person['person_department'].substratum(
+                'department')
+
+
 
 class TestAPI(BaseTest):
 
@@ -199,13 +209,7 @@ class TestAPI(BaseTest):
         error = self.api.person.GET(1, 'department')
         self.assertError(400, error)
 
-        # department is referenced through person_department
-        Person, Department = self.api.person.table, self.api.department.table
-        PD = self.api.person_department.table
-        Person['person_department'] = Person['id'] == PD['person_id']
-        PD['department'] = PD['department_id'] == Department['id']
-        Person['department'] = Person['person_department'].substratum(
-                'department')
+        self.reference_pd()
 
         _, sales2 = self.api.person.GET(1, 'department')
         self.assertEqual(sales, sales2)

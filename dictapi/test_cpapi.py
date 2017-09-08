@@ -120,13 +120,7 @@ class TestAPICherryPy(BaseCherryPy):
         The person table references the department table using a join table.
         """
         # Setup the references for each table
-        Person, Department = self.api.person.table, self.api.department.table
-        PD = self.api.person_department.table
-        Person['person_department'] = Person['id'] == PD['person_id']
-        PD['department'] = PD['department_id'] == Department['id']
-        # Use a substratum so the person_department entry can be skipped
-        Person['department'] = Person['person_department'].substratum(
-                'department')
+        self.reference_pd()
 
         jake = self.put('/person', data={'name':'Jake'}).json()
         sales = self.put('/department', data={'name':'Sales'}).json()
@@ -217,12 +211,7 @@ class TestAPICherryPy(BaseCherryPy):
 
     def test_get_pagination(self):
         # department is referenced through person_department
-        Person, Department = self.api.person.table, self.api.department.table
-        PD = self.api.person_department.table
-        Person['person_department'] = Person['id'] == PD['person_id']
-        PD['department'] = PD['department_id'] == Department['id']
-        Person['department'] = Person['person_department'].substratum(
-                'department')
+        self.reference_pd()
 
         response = self.get('/person')
         self.assertEqual(404, response.status_code)
