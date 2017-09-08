@@ -149,6 +149,8 @@ class GET_RANGE(HTTPMethod):
 
         if offset >= end:
             return (BAD_REQUEST, error('Invalid range value'))
+        if end - offset > self.maximum_range:
+            offset = (end - self.maximum_range) - 1
 
         limit = end - offset
         entries = list(self.table.get_where().offset(offset).limit(limit))
