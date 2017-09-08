@@ -27,10 +27,8 @@ def json_out(func):
             result = [i.no_refs() for i in result]
 
         cherrypy.response.status = code
-        if result == None:
-            out = {}
-        else:
-            out = json.dumps(result, default=json_serial).encode()
+        # Output should at least contain an empty dict
+        out = json.dumps(result or {}, default=json_serial).encode()
         return out
     return wrapper
 
