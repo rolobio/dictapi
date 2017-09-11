@@ -334,11 +334,14 @@ class TestAPI(BaseTest):
         _, jake = self.api.person.PUT(name='Jake')
         self.assertGreater(jake['last_modified'].date(), date.min)
 
+        global called; called = False
+
         def FakeLastModified(call, column_name, *a, **kw):
             code, result = call(*a, **kw)
             # Attempt to change the column, this should be rolled back
             result[column_name] = date.min
             result.flush()
+            global called; called = True
             return (code, result)
 
         self.api.person.GET.modify(FakeLastModified, 'last_modified')
@@ -348,6 +351,7 @@ class TestAPI(BaseTest):
         self.assertEqual(jake['id'], jake2['id'])
         self.assertEqual(jake['name'], jake2['name'])
         self.assertNotEqual(jake2['last_modified'], date.min)
+        self.assertTrue(called, msg='FakeLastModified was not called')
 
 
 
